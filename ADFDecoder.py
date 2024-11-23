@@ -5,8 +5,9 @@
     stdout.
 """
 
-import sys
 import re
+import signal
+import sys
 
 TYPE1_SENTENCE_IDS = (b'z', b'A', b'B', b'C', b'D', b'E', b'G', b'I', b'K',
                       b'L', b'Q', b'S', b'T', b'l')
@@ -89,16 +90,29 @@ def decodeType1Sentence(sentence):
         data["Ground Speed (knots)"] = int(sentence[1:])
 
     if sentence.startswith("E"):
-        # Distance to next waypoint: Format is "E<deci-nm>"
-        data["Distance to Wpt (nm)"] = float(sentence[1:]) / 10.0
+        if sentence[1:3] == "--":
+            # Waypoint not defined
+            data["Distance to Wpt (nm)"] = sentence[1:]
+        else:
+            # Distance to next waypoint: Format is "E<deci-nm>"
+            data["Distance to Wpt (nm)"] = float(sentence[1:]) / 10.0
 
     if sentence.startswith("G"):
-        # Cross track error: Format is G<L|R><centi-nm>
-        data["XTK Error (nm)"] = sentence[1] + str(float(sentence[2:]) / 100.0)
+        if sentence[1:3] == "--":
+            # Waypoint not defined
+            data["XTK Error (nm)"] = sentence[1:]
+        else:
+            # Cross track error: Format is G<L|R><centi-nm>
+            data["XTK Error (nm)"] = sentence[1] + \
+                                     str(float(sentence[2:]) / 100.0)
 
     if sentence.startswith("I"):
-        # Desired track (degrees): Format is I<deci-degrees>"
-        data["TRK (degrees)"] = float(sentence[1:]) / 10.0
+        if sentence[1:3] == "--":
+            # Waypoint not defined
+            data["TRK (degrees)"] = sentence[1:]
+        else:
+            # Desired track (degrees): Format is I<deci-degrees>"
+            data["TRK (degrees)"] = float(sentence[1:]) / 10.0
 
     if sentence.startswith("K"):
         # Next waypoint: Format is "K<ccccc>" The documentation calls this the
@@ -107,8 +121,12 @@ def decodeType1Sentence(sentence):
         data["Wpt"] = sentence[1:]
 
     if sentence.startswith("L"):
-        # Bearing to next waypoint: Format is "L<deci-degrees>"
-        data["BRG (degrees)"] = float(sentence[1:]) / 10.0
+        if sentence[1:3] == "--":
+            # Waypoint not defined
+            data["BRG (degrees)"] = sentence[1:]
+        else:
+            # Bearing to next waypoint: Format is "L<deci-degrees>"
+            data["BRG (degrees)"] = float(sentence[1:]) / 10.0
 
     if sentence.startswith("Q"):
         # Magnetic Variation: Format is "Q<E|W><deci-degrees>"
@@ -124,9 +142,13 @@ def decodeType1Sentence(sentence):
         data["Warning Status"] = sentence[1:]
 
     if sentence.startswith("l"):
-        # Distance to destination: Format is "l<deci-nm>". This really is the
-        # destination waypoint.
-        data["Distance to Dest (nm)"] = float(sentence[1:]) / 10.0
+        if sentence[1:3] == "--":
+            # Waypoint not defined
+            data["Distance to Dest (nm)"] = sentence[1:]
+        else:
+            # Distance to destination: Format is "l<deci-nm>". This really
+            # is the destination waypoint.
+            data["Distance to Dest (nm)"] = float(sentence[1:]) / 10.0
 
     return data
 
@@ -160,10 +182,18 @@ def decodeType2Sentence(sentence):
     activeLeg = (sentence[3]) & ACTIVE_LEG != 0
     legNo = (sentence[3]) & LEG_NUM_MASK
     data["Seq"] = str(legNo)
-    if activeLeg:
-        data["Seq"] += " Active"
-    if lastLeg:
-        data["Seq"] += " Last  "
+    if activeLeg and lastLeg:
+        data["Seq"] += " Active Last"
+    elif activeLeg:
+        data["Seq"] += " Active     "
+    elif lastLeg:
+        data["Seq"] += "        Last"
+    else:
+        data["Seq"] += "            "
+
+    if len(sentence) < 5:
+        # No waypoints defined
+        return data
 
     data["Wpt"] = sentence[4:9].decode('ascii')
     latDir = "S" if (sentence[9]) & SOUTH_NORTH else "N"
@@ -190,6 +220,13 @@ def decodeType2Sentence(sentence):
     return data
 
 
+def handler(signum, frame):
+    print("Quitting...")
+    sys.exit(0)
+
+    signal.signal(signal.SIGINT, handler)
+
+
 STX = b'\x02'
 ETX = b'\x03'
 
@@ -198,6 +235,21 @@ if __name__ == "__main__":
     buffer = bytearray()
     isBuffering = False
     preBufferEnd = 0
+
+    print("Waiting for a full message to go by....")
+
+    while True:
+        # Read one byte at a time from standard input
+        byte = sys.stdin.buffer.read(1)
+
+        if byte == b'':
+            # End of input stream (e.g., Ctrl+D), stop processing
+            print("Exiting...")
+            sys.exit(1)
+            break
+
+        if byte == ETX:
+            break
 
     print("Listening for Garmin 500 Series data (STX/ETX delimited)...")
 
@@ -208,6 +260,7 @@ if __name__ == "__main__":
         if byte == b'':
             # End of input stream (e.g., Ctrl+D), stop processing
             print("Exiting...")
+            sys.exit(0)
             break
 
         if byte == STX and not isBuffering:
