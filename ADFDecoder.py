@@ -9,6 +9,12 @@ import re
 import signal
 import sys
 
+__author__ = "Mark A. Matthews"
+__copyright__ = "Copyright 2024 Mark A. Matthews"
+__license__ = "Public Domain"
+__version__ = "1.0"
+
+
 TYPE1_SENTENCE_IDS = (b'z', b'A', b'B', b'C', b'D', b'E', b'G', b'I', b'K',
                       b'L', b'Q', b'S', b'T', b'l')
 
@@ -220,11 +226,9 @@ def decodeType2Sentence(sentence):
     return data
 
 
-def handler(signum, frame):
+def handler(signum, frame):  # pylint: disable=unused-argument
     print("Quitting...")
     sys.exit(0)
-
-    signal.signal(signal.SIGINT, handler)
 
 
 STX = b'\x02'
@@ -236,6 +240,8 @@ if __name__ == "__main__":
     isBuffering = False
     preBufferEnd = 0
 
+    signal.signal(signal.SIGINT, handler)
+
     print("Waiting for a full message to go by....")
 
     while True:
@@ -246,7 +252,6 @@ if __name__ == "__main__":
             # End of input stream (e.g., Ctrl+D), stop processing
             print("Exiting...")
             sys.exit(1)
-            break
 
         if byte == ETX:
             break
@@ -261,7 +266,6 @@ if __name__ == "__main__":
             # End of input stream (e.g., Ctrl+D), stop processing
             print("Exiting...")
             sys.exit(0)
-            break
 
         if byte == STX and not isBuffering:
             # Start buffering when STX is detected
