@@ -73,88 +73,89 @@ def decodeType1Sentence(sentence):
 
     # Check sentence type based on the initial character and decode accordingly
 
-    if sentence.startswith("z"):
-        # GPS altitude in feet . Format is "z<feet>"
-        data["GPS Altitude (ft)"] = int(sentence[1:])
+    match sentence[0]:
+        case  "z":
+            # GPS altitude in feet . Format is "z<feet>"
+            data["GPS Altitude (ft)"] = int(sentence[1:])
 
-    if sentence.startswith("A"):
-        # Latitude: Format is "A<direction><degrees>.<minutes>"
-        data["Latitude"] = \
-              f"{sentence[1]} {sentence[3:5]}°{sentence[6:8]}.{sentence[8:]}'"
+        case  "A":
+            # Latitude: Format is "A<direction><degrees>.<minutes>"
+            data["Latitude"] = \
+               f"{sentence[1]} {sentence[3:5]}°{sentence[6:8]}.{sentence[8:]}'"
 
-    if sentence.startswith("B"):
-        # Longitude: Format is "B<direction><degrees>.<minutes>"
-        data["Longitude"] = \
-              f"{sentence[1]} {sentence[3:6]}°{sentence[7:9]}.{sentence[9:]}'"
+        case  "B":
+            # Longitude: Format is "B<direction><degrees>.<minutes>"
+            data["Longitude"] = \
+               f"{sentence[1]} {sentence[3:6]}°{sentence[7:9]}.{sentence[9:]}'"
 
-    if sentence.startswith("C"):
-        # Track in degrees (assuming it's the rest of the string as a float)
-        data["Track (degrees)"] = float(sentence[1:])
+        case  "C":
+            # Track in degrees (assuming it's the rest of the string as a float)
+            data["Track (degrees)"] = float(sentence[1:])
 
-    if sentence.startswith("D"):
-        # Ground Speed: Format is "D<knots>"
-        data["Ground Speed (knots)"] = int(sentence[1:])
+        case  "D":
+            # Ground Speed: Format is "D<knots>"
+            data["Ground Speed (knots)"] = int(sentence[1:])
 
-    if sentence.startswith("E"):
-        if sentence[1:3] == "--":
-            # Waypoint not defined
-            data["Distance to Wpt (nm)"] = sentence[1:]
-        else:
-            # Distance to next waypoint: Format is "E<deci-nm>"
-            data["Distance to Wpt (nm)"] = float(sentence[1:]) / 10.0
+        case  "E":
+            if sentence[1:3] == "--":
+                # Waypoint not defined
+                data["Distance to Wpt (nm)"] = sentence[1:]
+            else:
+                # Distance to next waypoint: Format is "E<deci-nm>"
+                data["Distance to Wpt (nm)"] = float(sentence[1:]) / 10.0
 
-    if sentence.startswith("G"):
-        if sentence[1:3] == "--":
-            # Waypoint not defined
-            data["XTK Error (nm)"] = sentence[1:]
-        else:
-            # Cross track error: Format is G<L|R><centi-nm>
-            data["XTK Error (nm)"] = sentence[1] + \
-                                     str(float(sentence[2:]) / 100.0)
+        case  "G":
+            if sentence[1:3] == "--":
+                # Waypoint not defined
+                data["XTK Error (nm)"] = sentence[1:]
+            else:
+                # Cross track error: Format is G<L|R><centi-nm>
+                data["XTK Error (nm)"] = sentence[1] + \
+                                          str(float(sentence[2:]) / 100.0)
 
-    if sentence.startswith("I"):
-        if sentence[1:3] == "--":
-            # Waypoint not defined
-            data["TRK (degrees)"] = sentence[1:]
-        else:
-            # Desired track (degrees): Format is I<deci-degrees>"
-            data["TRK (degrees)"] = float(sentence[1:]) / 10.0
+        case  "I":
+            if sentence[1:3] == "--":
+                # Waypoint not defined
+                data["TRK (degrees)"] = sentence[1:]
+            else:
+                # Desired track (degrees): Format is I<deci-degrees>"
+                data["TRK (degrees)"] = float(sentence[1:]) / 10.0
 
-    if sentence.startswith("K"):
-        # Next waypoint: Format is "K<ccccc>" The documentation calls this the
-        # "destination" waypoint, but it's actually the name for the waypoint
-        # in the active leg.
-        data["Wpt"] = sentence[1:]
+        case  "K":
+            # Next waypoint: Format is "K<ccccc>" The documentation calls this
+            # the "destination" waypoint, but it's actually the name for the
+            # waypoint in the active leg.
+            data["Wpt"] = sentence[1:]
 
-    if sentence.startswith("L"):
-        if sentence[1:3] == "--":
-            # Waypoint not defined
-            data["BRG (degrees)"] = sentence[1:]
-        else:
-            # Bearing to next waypoint: Format is "L<deci-degrees>"
-            data["BRG (degrees)"] = float(sentence[1:]) / 10.0
+        case  "L":
+            if sentence[1:3] == "--":
+                # Waypoint not defined
+                data["BRG (degrees)"] = sentence[1:]
+            else:
+                # Bearing to next waypoint: Format is "L<deci-degrees>"
+                data["BRG (degrees)"] = float(sentence[1:]) / 10.0
 
-    if sentence.startswith("Q"):
-        # Magnetic Variation: Format is "Q<E|W><deci-degrees>"
-        data["Mag Var (degrees)"] = sentence[1] + \
-                                    str(float(sentence[2:]) / 10.0)
+        case  "Q":
+            # Magnetic Variation: Format is "Q<E|W><deci-degrees>"
+            data["Mag Var (degrees)"] = sentence[1] + \
+                                         str(float(sentence[2:]) / 10.0)
 
-    if sentence.startswith("S"):
-        # NAV valid flag: Format is "S----<N|->"
-        data["NAV Valid"] = sentence[5] == "-"
+        case  "S":
+            # NAV valid flag: Format is "S----<N|->"
+            data["NAV Valid"] = sentence[5] == "-"
 
-    if sentence.startswith("T"):
-        # Warning status: Format is always "T<--------->"
-        data["Warning Status"] = sentence[1:]
+        case  "T":
+            # Warning status: Format is always "T<--------->"
+            data["Warning Status"] = sentence[1:]
 
-    if sentence.startswith("l"):
-        if sentence[1:3] == "--":
-            # Waypoint not defined
-            data["Distance to Dest (nm)"] = sentence[1:]
-        else:
-            # Distance to destination: Format is "l<deci-nm>". This really
-            # is the destination waypoint.
-            data["Distance to Dest (nm)"] = float(sentence[1:]) / 10.0
+        case  "l":
+            if sentence[1:3] == "--":
+                # Waypoint not defined
+                data["Distance to Dest (nm)"] = sentence[1:]
+            else:
+                # Distance to destination: Format is "l<deci-nm>". This really
+                # is the destination waypoint.
+                data["Distance to Dest (nm)"] = float(sentence[1:]) / 10.0
 
     return data
 
