@@ -163,3 +163,4 @@ cython_debug/
 #.idea/
 *.py~
 GNS530W_InstallationManual_190-00357-02_.pdf
+.DS_Store
